@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Змейка Mini App</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #222;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      background: #000;
+      display: block;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <h1>Змейка 🐍</h1>
+    <canvas id="game" width="400" height="400"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    const grid = 20;
+    const width = canvas.width;
+    const height = canvas.height;
+
+    let snake = [{x: 200, y: 200}];
+    let dx = grid;
+    let dy = 0;
+    let apple = spawnApple();
+    let score = 0;
+
+    function spawnApple() {
+      return {
+        x: Math.floor(Math.random() * (width / grid)) * grid,
+        y: Math.floor(Math.random() * (height / grid)) * grid
+      };
+    }
+
+    function gameLoop() {
+      // Перемещение змейки
+      const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+      
+      // Столкновение с границами
+      if (head.x < 0 || head.x >= width || head.y < 0 || head.y >= height || snakeCollision(head)) {
+        alert(`Игра окончена! Счет: ${score}`);
+        snake = [{x: 200, y: 200}];
+        dx = grid;
+        dy = 0;
+        score = 0;
+        apple = spawnApple();
+      }
+
+      snake.unshift(head);
+
+      // Съедание яблока
+      if (head.x === apple.x && head.y === apple.y) {
+        score++;
+        apple = spawnApple();
+      } else {
+        snake.pop();
+      }
+
+      draw();
+    }
+
+    function snakeCollision(head) {
+      return snake.some(segment => segment.x === head.x && segment.y === head.y);
+    }
+
+    function draw() {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, width, height);
+
+      // Рисуем змейку
+      ctx.fillStyle = '#0f0';
+      snake.forEach(segment => ctx.fillRect(segment.x, segment.y, grid-1, grid-1));
+
+      // Рисуем яблоко
+      ctx.fillStyle = '#f00';
+      ctx.fillRect(apple.x, apple.y, grid-1, grid-1);
+
+      // Счет
+      ctx.fillStyle = '#fff';
+      ctx.font = '16px Arial';
+      ctx.fillText(`Счет: ${score}`, 10, 20);
+    }
+
+    document.addEventListener('keydown', e => {
+      switch(e.key) {
+        case 'ArrowUp': if(dy === 0){ dx = 0; dy = -grid;} break;
+        case 'ArrowDown': if(dy === 0){ dx = 0; dy = grid;} break;
+        case 'ArrowLeft': if(dx === 0){ dx = -grid; dy = 0;} break;
+        case 'ArrowRight': if(dx === 0){ dx = grid; dy = 0;} break;
+      }
+    });
+
+    setInterval(gameLoop, 100);
+  </script>
+</body>
+</html>
