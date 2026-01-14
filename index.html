@@ -1,147 +1,355 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Змейка Mini App</title>
-  <style>
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: #222;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      margin: 0;
-      flex-direction: column;
-    }
-    canvas {
-      background: #000;
-      display: block;
-      margin-bottom: 20px;
-      touch-action: none;
-    }
-    h1 {
-      text-align: center;
-      margin: 10px 0;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Web App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0a1929 0%, #1a2332 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 16px;
+            padding-bottom: 100px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: rgba(26, 35, 50, 0.8);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .user-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .user-level {
+            font-size: 14px;
+            color: #64b5f6;
+        }
+
+        .confirm-btn {
+            background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+        }
+
+        .confirm-btn:hover {
+            background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(25, 118, 210, 0.4);
+        }
+
+        .confirm-btn:active {
+            transform: translateY(0);
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .card {
+            background: rgba(26, 35, 50, 0.9);
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(100, 181, 246, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(25, 118, 210, 0.4);
+            border-color: rgba(100, 181, 246, 0.4);
+        }
+
+        .card-large {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+            padding: 24px;
+            text-align: center;
+            border: none;
+        }
+
+        .card-large:hover {
+            background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #ffffff;
+        }
+
+        .card-price {
+            font-size: 24px;
+            font-weight: 700;
+            color: #64b5f6;
+            margin-bottom: 8px;
+        }
+
+        .card-image {
+            width: 100%;
+            height: 120px;
+            object-fit: contain;
+            border-radius: 8px;
+            margin-top: 8px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .card-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .banner-card {
+            background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 16px rgba(25, 118, 210, 0.4);
+        }
+
+        .banner-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .banner-icon {
+            font-size: 48px;
+            animation: spin 3s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 25, 41, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(100, 181, 246, 0.2);
+            padding: 12px 0;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            color: rgba(255, 255, 255, 0.6);
+            min-width: 60px;
+        }
+
+        .nav-item.active {
+            color: #64b5f6;
+            background: rgba(25, 118, 210, 0.2);
+        }
+
+        .nav-item:hover {
+            color: #90caf9;
+            background: rgba(25, 118, 210, 0.1);
+        }
+
+        .nav-icon {
+            font-size: 24px;
+        }
+
+        .nav-label {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .bot-username {
+            text-align: center;
+            padding: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .catalog-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .catalog-icon {
+            font-size: 32px;
+            color: #64b5f6;
+        }
+
+        .catalog-info {
+            flex: 1;
+        }
+
+        .catalog-amount {
+            font-size: 24px;
+            font-weight: 700;
+            color: #64b5f6;
+        }
+
+        .catalog-label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+    </style>
 </head>
 <body>
-  <h1>Змейка 🐍</h1>
-  <canvas id="game" width="400" height="400"></canvas>
+    <div class="container">
+        <div class="header">
+            <div class="user-info">
+                <div class="user-name">Павел</div>
+                <div class="user-level">Уровень 1</div>
+            </div>
+            <button class="confirm-btn">Подтвердить</button>
+        </div>
 
-  <script>
-    const canvas = document.getElementById('game');
-    const ctx = canvas.getContext('2d');
+        <div class="cards-grid">
+            <div class="card">
+                <div class="card-price">1990P</div>
+                <div class="card-title">Товар</div>
+                <div class="card-image" style="background: rgba(25, 118, 210, 0.1); display: flex; align-items: center; justify-content: center; color: #64b5f6; font-size: 48px;">📱</div>
+            </div>
 
-    const grid = 20;
-    const width = canvas.width;
-    const height = canvas.height;
+            <div class="card catalog-card">
+                <div class="catalog-icon">🪙</div>
+                <div class="catalog-info">
+                    <div class="catalog-amount">4000</div>
+                    <div class="catalog-label">Каталог</div>
+                </div>
+            </div>
 
-    let snake = [{x: 200, y: 200}];
-    let dx = grid;
-    let dy = 0;
-    let apple = spawnApple();
-    let score = 0;
+            <div class="card-large">
+                <div class="banner-icon">🎰</div>
+                <div class="banner-text">Выиграй IPhone!</div>
+            </div>
 
-    function spawnApple() {
-      let newApple;
-      do {
-        newApple = {
-          x: Math.floor(Math.random() * (width / grid)) * grid,
-          y: Math.floor(Math.random() * (height / grid)) * grid
-        };
-      } while (snake.some(s => s.x === newApple.x && s.y === newApple.y));
-      return newApple;
-    }
+            <div class="card">
+                <div class="card-title">Построй свою табачную империю</div>
+                <div class="card-icon">🏰</div>
+            </div>
 
-    function gameLoop() {
-      const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+            <div class="card">
+                <div class="card-title">Получи больше МОНЕТ</div>
+                <div class="card-icon">💰</div>
+            </div>
+        </div>
+    </div>
 
-      // Столкновение с границами
-      if (head.x < 0) head.x = width - grid;
-      if (head.x >= width) head.x = 0;
-      if (head.y < 0) head.y = height - grid;
-      if (head.y >= height) head.y = 0;
+    <div class="bottom-nav">
+        <div class="nav-item">
+            <div class="nav-icon">🎰</div>
+            <div class="nav-label">Рулетка</div>
+        </div>
+        <div class="nav-item">
+            <div class="nav-icon">📋</div>
+            <div class="nav-label">Каталог</div>
+        </div>
+        <div class="nav-item active">
+            <div class="nav-icon">🏠</div>
+            <div class="nav-label">Главная</div>
+        </div>
+        <div class="nav-item">
+            <div class="nav-icon">🎁</div>
+            <div class="nav-label">Бонусы</div>
+        </div>
+        <div class="nav-item">
+            <div class="nav-icon">👤</div>
+            <div class="nav-label">Профиль</div>
+        </div>
+    </div>
 
-      // Столкновение с самим собой
-      if (snakeCollision(head)) {
-        alert(`Игра окончена! Счет: ${score}`);
-        snake = [{x: 200, y: 200}];
-        dx = grid; dy = 0; score = 0;
-        apple = spawnApple();
-        return;
-      }
+    <div class="bot-username">@tabak1bot</div>
 
-      snake.unshift(head);
+    <script>
+        // Инициализация Telegram Web App
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            
+            // Настройка цветовой схемы
+            tg.setHeaderColor('#0a1929');
+            tg.setBackgroundColor('#0a1929');
+        }
 
-      // Съедание яблока
-      if (head.x === apple.x && head.y === apple.y) {
-        score++;
-        apple = spawnApple();
-      } else {
-        snake.pop();
-      }
+        // Обработчики кликов
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
 
-      draw();
-    }
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('click', function() {
+                // Здесь можно добавить логику обработки клика
+                console.log('Card clicked');
+            });
+        });
 
-    function snakeCollision(head) {
-      return snake.some((segment, index) => index > 0 && segment.x === head.x && segment.y === head.y);
-    }
-
-    function draw() {
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, width, height);
-
-      // Змейка
-      ctx.fillStyle = '#0f0';
-      snake.forEach(segment => ctx.fillRect(segment.x, segment.y, grid-1, grid-1));
-
-      // Яблоко
-      ctx.fillStyle = '#f00';
-      ctx.fillRect(apple.x, apple.y, grid-1, grid-1);
-
-      // Счет
-      ctx.fillStyle = '#fff';
-      ctx.font = '16px Arial';
-      ctx.fillText(`Счет: ${score}`, 10, 20);
-    }
-
-    // Управление стрелками
-    document.addEventListener('keydown', e => {
-      switch(e.key) {
-        case 'ArrowUp': if(dy === 0){ dx = 0; dy = -grid;} break;
-        case 'ArrowDown': if(dy === 0){ dx = 0; dy = grid;} break;
-        case 'ArrowLeft': if(dx === 0){ dx = -grid; dy = 0;} break;
-        case 'ArrowRight': if(dx === 0){ dx = grid; dy = 0;} break;
-      }
-    });
-
-    // Сенсорное управление для телефона
-    let touchStartX = 0, touchStartY = 0;
-    canvas.addEventListener('touchstart', e => {
-      const touch = e.touches[0];
-      touchStartX = touch.clientX;
-      touchStartY = touch.clientY;
-    });
-    canvas.addEventListener('touchend', e => {
-      const touch = e.changedTouches[0];
-      const dxTouch = touch.clientX - touchStartX;
-      const dyTouch = touch.clientY - touchStartY;
-
-      if(Math.abs(dxTouch) > Math.abs(dyTouch)){
-        if(dxTouch > 0 && dx === 0) { dx = grid; dy = 0; }
-        else if(dxTouch < 0 && dx === 0) { dx = -grid; dy = 0; }
-      } else {
-        if(dyTouch > 0 && dy === 0) { dx = 0; dy = grid; }
-        else if(dyTouch < 0 && dy === 0) { dx = 0; dy = -grid; }
-      }
-    });
-
-    setInterval(gameLoop, 100);
-  </script>
+        document.querySelector('.confirm-btn').addEventListener('click', function() {
+            // Здесь можно добавить логику подтверждения
+            console.log('Confirm clicked');
+        });
+    </script>
 </body>
 </html>
