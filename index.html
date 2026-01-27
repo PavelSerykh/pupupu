@@ -327,6 +327,57 @@
       margin-top: 4px;
     }
 
+    .roulette-strip-wrapper {
+      margin-top: 10px;
+      border-radius: 999px;
+      background: radial-gradient(circle at top, rgba(34,211,238,0.12), rgba(15,23,42,0.96));
+      border: 1px solid rgba(148,163,184,0.35);
+      box-shadow: 0 12px 30px rgba(15,23,42,0.9);
+      overflow: hidden;
+      position: relative;
+    }
+    .roulette-strip {
+      display: flex;
+      gap: 8px;
+      padding: 8px 14px;
+      transform: translateX(0);
+      transition: transform 3.2s cubic-bezier(0.08, 0.6, 0.12, 1);
+      will-change: transform;
+    }
+    .roulette-item {
+      min-width: 80px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: rgba(15,23,42,0.98);
+      border: 1px solid rgba(148,163,184,0.35);
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      color: var(--muted);
+    }
+    .roulette-item span {
+      font-size: 15px;
+    }
+    .roulette-strip-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .roulette-strip-overlay::before {
+      content: "";
+      width: 88px;
+      height: 100%;
+      border-radius: 999px;
+      border: 2px solid rgba(250,250,250,0.9);
+      box-shadow: 0 0 14px rgba(250,250,250,0.55);
+    }
+
     .fuel-badge {
       display: inline-flex;
       align-items: center;
@@ -618,6 +669,10 @@
           <div class="roulette-info">
             Нажмите «Крутить рулетку», результат покажется во всплывающем окне.
           </div>
+          <div class="roulette-strip-wrapper" id="roulette-strip-wrapper">
+            <div class="roulette-strip" id="roulette-strip"></div>
+            <div class="roulette-strip-overlay"></div>
+          </div>
           <button class="btn btn-danger" id="btn-spin">
             Крутить рулетку (10 ⭐)
           </button>
@@ -710,6 +765,8 @@
   const fuelText = document.getElementById("fuel-text");
 
   const btnSpin = document.getElementById("btn-spin");
+  const rouletteStripWrapper = document.getElementById("roulette-strip-wrapper");
+  const rouletteStrip = document.getElementById("roulette-strip");
 
   const modalBackdrop = document.getElementById("modal");
   const modalTitle = document.getElementById("modal-title");
@@ -815,6 +872,7 @@
 
   btnSpin.addEventListener("click", () => {
     statusBar.textContent = "Крутим рулетку…";
+    btnSpin.disabled = true;
     const prizes = [
       { type: "stars", stars: 5, weight: 40 },
       { type: "stars", stars: 10, weight: 30 },
@@ -832,14 +890,48 @@
       if (r < weights[i]) { prize = prizes[i]; break; }
       r -= weights[i];
     }
-    let text;
-    if (prize.type === "iphone") {
-      text = "Поздравляем! Вам выпал условный iPhone. В боевой версии это можно зафиксировать на сервере.";
-    } else {
-      text = `Вы выиграли ${prize.stars} звёздочек. Баланс остаётся бесконечным.`;
+    // Строим визуальную ленту призов
+    const visualItems = [];
+    const totalCells = 24;
+    for (let i = 0; i < totalCells - 1; i++) {
+      visualItems.push(prizes[Math.floor(Math.random() * prizes.length)]);
     }
-    showModal("Результат рулетки", text);
-    statusBar.textContent = "Рулетка завершена. Баланс: ∞ ⭐.";
+    visualItems.push(prize); // победный приз в конце
+
+    rouletteStrip.innerHTML = "";
+    visualItems.forEach(p => {
+      const el = document.createElement("div");
+      el.className = "roulette-item";
+      const icon = p.type === "iphone" ? "📱" : "⭐";
+      const label = p.type === "iphone" ? "iPhone" : `+${p.stars}`;
+      el.innerHTML = `<span>${icon}</span><div>${label}</div>`;
+      rouletteStrip.appendChild(el);
+    });
+
+    // Анимация движения ленты
+    const cellWidth = 88; // примерно ширина одной ячейки с отступами
+    const targetIndex = visualItems.length - 1;
+    const wrapperWidth = rouletteStripWrapper.getBoundingClientRect().width;
+    const initialOffset = 0;
+    rouletteStrip.style.transition = "none";
+    rouletteStrip.style.transform = `translateX(${initialOffset}px)`;
+    void rouletteStrip.offsetWidth; // force reflow
+    const targetCenter = targetIndex * cellWidth + cellWidth / 2;
+    const finalOffset = -(targetCenter - wrapperWidth / 2);
+    rouletteStrip.style.transition = "transform 3.2s cubic-bezier(0.08, 0.6, 0.12, 1)";
+    rouletteStrip.style.transform = `translateX(${finalOffset}px)`;
+
+    setTimeout(() => {
+      let text;
+      if (prize.type === "iphone") {
+        text = "Поздравляем! Вам выпал условный iPhone. В боевой версии это можно зафиксировать на сервере.";
+      } else {
+        text = `Вы выиграли ${prize.stars} звёздочек. Баланс остаётся бесконечным.`;
+      }
+      showModal("Результат рулетки", text);
+      statusBar.textContent = "Рулетка завершена. Баланс: ∞ ⭐.";
+      btnSpin.disabled = false;
+    }, 3300);
   });
 
   let gameRunning = false;
@@ -992,7 +1084,7 @@
 
     if (Math.random() < dt * 3) spawnObject();
 
-    const speed = 220;
+    const speed = 320; /* ускорили игру */
     const h = canvas.height;
 
     const desiredX = lanesX[targetLane];
@@ -1015,8 +1107,16 @@
             collectedStars += 1;
             gameStarsEl.textContent = collectedStars;
           }
+          return false;
+        } else {
+          // Столкновение с препятствием — немедленно заканчиваем игру
+          gameRunning = false;
+          showModal("Столкновение", "Вы врезались в препятствие. Попробуйте ещё раз!");
+          statusBar.textContent = "Вы врезались в препятствие. Нажмите «Старт полёта», чтобы попробовать снова.";
+          btnStartGame.disabled = false;
+          btnStartGame.textContent = "Старт полёта";
+          return false;
         }
-        return false;
       }
       return true;
     });
