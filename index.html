@@ -1,6 +1,1086 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+  <meta charset="UTF-8" />
+  <title>Telegram Mini App — Полёт к звёздам</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --bg: #050816;
+      --bg-card: #0f172a;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.15);
+      --accent-2: #a855f7;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --danger: #f97373;
+      --success: #22c55e;
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1d4ed8 0, #020617 40%, #020617 100%);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .app {
+      width: 100%;
+      max-width: 420px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 12px 12px;
+    }
+    .card {
+      background: linear-gradient(145deg, rgba(15,23,42,0.96), rgba(15,23,42,0.8));
+      border-radius: var(--radius);
+      padding: 14px 14px 16px;
+      box-shadow:
+        0 18px 40px rgba(15,23,42,0.9),
+        0 0 0 1px rgba(148,163,184,0.15);
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background:
+        radial-gradient(circle at 10% 0, rgba(56,189,248,0.3), transparent 55%),
+        radial-gradient(circle at 90% 0, rgba(168,85,247,0.3), transparent 55%);
+      opacity: 0.25;
+      pointer-events: none;
+    }
+    .card-inner {
+      position: relative;
+      z-index: 1;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 0, #f97316, #1d4ed8);
+      box-shadow: 0 0 0 2px rgba(148,163,184,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #f9fafb;
+    }
+    .username {
+      font-weight: 600;
+      font-size: 16px;
+    }
+    .subtext {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: rgba(15,23,42,0.8);
+      border: 1px solid rgba(148,163,184,0.4);
+      color: var(--muted);
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .balance-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .balance-value {
+      font-size: 20px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .star {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      background: radial-gradient(circle at 20% 0, #facc15, #f97316);
+      box-shadow: 0 0 14px rgba(250,204,21,0.7);
+    }
+
+    .btn {
+      width: 100%;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #e5e7eb;
+      background: linear-gradient(135deg, #2563eb, #06b6d4);
+      box-shadow: 0 14px 30px rgba(37, 99, 235, 0.6);
+      cursor: pointer;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease;
+    }
+    .btn:active {
+      transform: translateY(1px) scale(0.99);
+      box-shadow: 0 10px 24px rgba(30, 64, 175, 0.7);
+      filter: brightness(0.97);
+    }
+    .btn-secondary {
+      background: rgba(15,23,42,0.9);
+      border: 1px solid rgba(148,163,184,0.4);
+      box-shadow: 0 10px 25px rgba(15,23,42,0.9);
+      color: #e5e7eb;
+    }
+    .btn-ghost {
+      background: transparent;
+      border: 1px dashed rgba(148,163,184,0.6);
+      box-shadow: none;
+      color: var(--muted);
+    }
+    .btn-small {
+      font-size: 12px;
+      padding: 8px 12px;
+      margin-top: 4px;
+      box-shadow: none;
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444, #f97316);
+      box-shadow: 0 14px 32px rgba(248, 113, 113, 0.65);
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      box-shadow: 0 14px 32px rgba(34, 197, 94, 0.6);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .pill {
+      border-radius: var(--radius);
+      padding: 10px 11px 12px;
+      background: rgba(15,23,42,0.9);
+      border: 1px solid rgba(148,163,184,0.25);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .pill::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 0 0, rgba(56,189,248,0.3), transparent 60%);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .pill:hover::before {
+      opacity: 0.9;
+    }
+    .pill-title {
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .pill-sub {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .tabs {
+      margin-top: 14px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .tab {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .tab.active {
+      display: flex;
+    }
+
+    .tab-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .tab-subtitle {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .catalog-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .catalog-item {
+      background: rgba(15,23,42,0.95);
+      border-radius: 14px;
+      border: 1px solid rgba(148,163,184,0.3);
+      padding: 10px;
+      font-size: 13px;
+    }
+    .catalog-title {
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+    .catalog-desc {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .roulette-info {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .fuel-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.9);
+      border: 1px solid rgba(148,163,184,0.4);
+      font-size: 11px;
+      margin-top: 4px;
+    }
+    .fuel-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--success);
+    }
+
+    .game-wrapper {
+      background: radial-gradient(circle at top, rgba(56,189,248,0.25), rgba(15,23,42,1));
+      border-radius: 18px;
+      padding: 10px;
+      border: 1px solid rgba(148,163,184,0.4);
+      box-shadow: 0 16px 32px rgba(15,23,42,0.9);
+    }
+    canvas {
+      width: 100%;
+      max-width: 360px;
+      height: 200px;
+      border-radius: 14px;
+      display: block;
+      background: radial-gradient(circle at top, #020617, #020617);
+    }
+    .game-hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      margin-top: 6px;
+    }
+
+    .bottom-nav {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 10px;
+      background: rgba(15,23,42,0.92);
+      border-radius: 999px;
+      padding: 4px;
+      box-shadow: 0 16px 32px rgba(15,23,42,0.9);
+      border: 1px solid rgba(148,163,184,0.4);
+    }
+    .nav-btn {
+      border-radius: 999px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      padding: 7px 4px;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      align-items: center;
+      justify-content: center;
+    }
+    .nav-btn span {
+      font-size: 13px;
+    }
+    .nav-btn.active {
+      background: radial-gradient(circle at top, rgba(56,189,248,0.3), transparent 70%);
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+    .modal-backdrop.active {
+      display: flex;
+    }
+    .modal {
+      background: linear-gradient(145deg, #020617, #020617);
+      border-radius: 18px;
+      padding: 14px 14px 16px;
+      max-width: 360px;
+      width: calc(100% - 40px);
+      box-shadow:
+        0 18px 50px rgba(15,23,42,0.95),
+        0 0 0 1px rgba(148,163,184,0.35);
+      font-size: 13px;
+    }
+    .modal-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .modal-body {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .ref-link-box {
+      background: rgba(15,23,42,0.9);
+      border-radius: 10px;
+      border: 1px solid rgba(148,163,184,0.4);
+      padding: 6px 8px;
+      margin-top: 6px;
+      font-size: 11px;
+      word-break: break-all;
+    }
+
+    .status-bar {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 6px;
+      text-align: left;
+    }
+    .status-bar span {
+      color: var(--accent);
+    }
+
+    .badge-locked {
+      font-size: 11px;
+      color: var(--danger);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <div class="card-inner">
+      <div class="header">
+        <div class="avatar" id="avatar">U</div>
+        <div style="flex:1">
+          <div class="username" id="username">@user</div>
+          <div class="subtext">
+            Ваш космический профиль. Сначала подтвердите подписку — и откроются все вкладки.
+          </div>
+        </div>
+        <div class="badge" id="verify-badge">
+          <span>Статус: не подтвержден</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <div class="balance-label">Баланс звёздочек</div>
+          <div class="balance-value">
+            <span id="balance">0</span>
+            <div class="star"></div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <button class="btn-small btn-secondary" id="btn-verify">
+            Подтвердить подписку
+          </button>
+          <div class="badge-locked" id="locked-hint">
+            Остальные вкладки заблокированы до подписки
+          </div>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:14px;">
+        <div class="pill" id="btn-item">
+          <div class="pill-title">Товар</div>
+          <div class="pill-sub">Открыть каталог товаров</div>
+        </div>
+        <div class="pill" id="btn-catalog">
+          <div class="pill-title">Каталог</div>
+          <div class="pill-sub">9 космических заглушек</div>
+        </div>
+        <div class="pill" id="btn-iphone">
+          <div class="pill-title">Выиграй iPhone</div>
+          <div class="pill-sub">Крути рулетку за звёздочки</div>
+        </div>
+        <div class="pill" id="btn-flight">
+          <div class="pill-title">Полет к звёздам</div>
+          <div class="pill-sub">Мини-игра с ракетой</div>
+        </div>
+      </div>
+
+      <button class="btn btn-secondary" id="btn-more-stars">
+        Получи больше звёзд
+      </button>
+
+      <div class="status-bar" id="status-bar">
+        Telegram WebApp загружается…
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" id="tab-profile">
+      <div class="tab-title">Профиль</div>
+      <div class="tab-subtitle">
+        Здесь ваш баланс звёздочек, статус подписки и реферальная ссылка.
+      </div>
+
+      <div class="card" style="margin-top:6px;">
+        <div class="card-inner">
+          <div class="row">
+            <div>
+              <div class="balance-label">Ваш Telegram</div>
+              <div class="username" id="profile-username">@user</div>
+            </div>
+            <div style="text-align:right">
+              <div class="balance-label">Статус подписки</div>
+              <div id="profile-sub-status" style="font-size:13px;color:var(--danger);font-weight:600;">
+                Не подтверждена
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-small" id="btn-verify-2" style="margin-top:10px;">
+            Подтвердить подписку
+          </button>
+
+          <div style="margin-top:12px;">
+            <div class="balance-label">Реферальная ссылка</div>
+            <div class="ref-link-box" id="ref-link-box">
+              Загрузка…
+            </div>
+            <button class="btn-small btn-ghost" id="btn-copy-ref">
+              Скопировать ссылку
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab" id="tab-game">
+      <div class="tab-title">Игра: Полёт к звёздам</div>
+      <div class="tab-subtitle">
+        Управляйте ракетой и собирайте звёзды. Игра длится 30 секунд, можно собрать до 20 звёздочек. 1 раз в сутки.
+      </div>
+
+      <div class="game-wrapper" style="margin-top:6px;">
+        <canvas id="game-canvas" width="360" height="200"></canvas>
+        <div class="game-hud">
+          <div>Время: <span id="game-timer">30</span> c</div>
+          <div>Звёзд: <span id="game-stars">0</span>/20</div>
+        </div>
+        <div class="fuel-badge" id="fuel-badge">
+          <div class="fuel-dot" id="fuel-dot"></div>
+          <span id="fuel-text">Бак с топливом полон</span>
+        </div>
+        <button class="btn btn-success" id="btn-start-game" style="margin-top:8px;">
+          Старт полёта
+        </button>
+      </div>
+    </div>
+
+    <div class="tab" id="tab-catalog">
+      <div class="tab-title">Каталог</div>
+      <div class="tab-subtitle">
+        9 товаров-заглушек (без покупки).
+      </div>
+
+      <div class="card" style="margin-top:6px;">
+        <div class="card-inner">
+          <div class="catalog-grid" id="catalog-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab" id="tab-roulette">
+      <div class="tab-title">Рулетка</div>
+      <div class="tab-subtitle">
+        Одна прокрутка стоит 10 звёздочек. Призы от 5 до 50 звёзд, плюс шанс на условный iPhone.
+      </div>
+
+      <div class="card" style="margin-top:6px;">
+        <div class="card-inner">
+          <div class="roulette-info">
+            Нажмите «Крутить рулетку», результат покажется во всплывающем окне.
+          </div>
+          <button class="btn btn-danger" id="btn-spin">
+            Крутить рулетку (10 ⭐)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn active" data-tab="profile">
+      <span>👤</span>
+      Профиль
+    </button>
+    <button class="nav-btn" data-tab="game">
+      <span>🚀</span>
+      Игра
+    </button>
+    <button class="nav-btn" data-tab="catalog">
+      <span>🛒</span>
+      Каталог
+    </button>
+    <button class="nav-btn" data-tab="roulette">
+      <span>🎰</span>
+      Рулетка
+    </button>
+  </div>
+
+  <div class="modal-backdrop" id="modal">
+    <div class="modal">
+      <div class="modal-title" id="modal-title">Заголовок</div>
+      <div class="modal-body" id="modal-body">Текст окна.</div>
+      <div class="ref-link-box" id="modal-extra" style="display:none;"></div>
+      <div class="modal-actions">
+        <button class="btn-small btn-ghost" id="modal-close">Закрыть</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+  if (tg) {
+    tg.expand();
+    tg.ready();
+  }
+
+  const statusBar = document.getElementById("status-bar");
+  const usernameEl = document.getElementById("username");
+  const profileUsernameEl = document.getElementById("profile-username");
+  const avatarEl = document.getElementById("avatar");
+  const balanceEl = document.getElementById("balance");
+  const verifyBadgeEl = document.getElementById("verify-badge");
+  const lockedHintEl = document.getElementById("locked-hint");
+  const profileSubStatusEl = document.getElementById("profile-sub-status");
+  const refLinkBoxEl = document.getElementById("ref-link-box");
+  const btnVerify = document.getElementById("btn-verify");
+  const btnVerify2 = document.getElementById("btn-verify-2");
+  const btnItem = document.getElementById("btn-item");
+  const btnCatalog = document.getElementById("btn-catalog");
+  const btnIphone = document.getElementById("btn-iphone");
+  const btnFlight = document.getElementById("btn-flight");
+  const btnMoreStars = document.getElementById("btn-more-stars");
+  const btnCopyRef = document.getElementById("btn-copy-ref");
+
+  const navButtons = document.querySelectorAll(".nav-btn");
+  const tabs = {
+    profile: document.getElementById("tab-profile"),
+    game: document.getElementById("tab-game"),
+    catalog: document.getElementById("tab-catalog"),
+    roulette: document.getElementById("tab-roulette"),
+  };
+
+  const catalogGrid = document.getElementById("catalog-grid");
+
+  const canvas = document.getElementById("game-canvas");
+  const ctx = canvas.getContext("2d");
+  const gameTimerEl = document.getElementById("game-timer");
+  const gameStarsEl = document.getElementById("game-stars");
+  const btnStartGame = document.getElementById("btn-start-game");
+  const fuelDot = document.getElementById("fuel-dot");
+  const fuelText = document.getElementById("fuel-text");
+
+  const btnSpin = document.getElementById("btn-spin");
+
+  const modalBackdrop = document.getElementById("modal");
+  const modalTitle = document.getElementById("modal-title");
+  const modalBody = document.getElementById("modal-body");
+  const modalExtra = document.getElementById("modal-extra");
+  const modalClose = document.getElementById("modal-close");
+
+  function showModal(title, body, extraHtml) {
+    modalTitle.textContent = title;
+    modalBody.textContent = body;
+    if (extraHtml) {
+      modalExtra.innerHTML = extraHtml;
+      modalExtra.style.display = "block";
+    } else {
+      modalExtra.style.display = "none";
+    }
+    modalBackdrop.classList.add("active");
+  }
+
+  modalClose.addEventListener("click", () => {
+    modalBackdrop.classList.remove("active");
+  });
+  modalBackdrop.addEventListener("click", (e) => {
+    if (e.target === modalBackdrop) modalBackdrop.classList.remove("active");
+  });
+
+  const API_BASE = "";
+
+  async function api(path, options = {}) {
+    const url = API_BASE + path;
+    const headers = options.headers || {};
+    if (tg && tg.initDataUnsafe && tg.initData) {
+      const user = tg.initDataUnsafe.user;
+      if (!user) {
+        throw new Error("initDataUnsafe.user отсутствует");
+      }
+      headers["X-Telegram-InitData"] = tg.initData;
+      headers["X-Telegram-User-Id"] = user.id;
+      if (user.username) headers["X-Telegram-Username"] = user.username;
+    }
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Ошибка ${res.status}: ${text}`);
+    }
+    return await res.json();
+  }
+
+  let isVerified = false;
+  let currentRefLink = "";
+
+  async function loadProfile() {
+    try {
+      statusBar.textContent = "Загружаем профиль…";
+      const data = await api("/api/me");
+      isVerified = data.is_verified;
+      currentRefLink = data.ref_link || "";
+
+      const user = tg && tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
+      const uname = user && (user.username || user.first_name) || "Гость";
+      usernameEl.textContent = user && user.username ? "@" + user.username : uname;
+      profileUsernameEl.textContent = usernameEl.textContent;
+      avatarEl.textContent = uname[0] ? uname[0].toUpperCase() : "U";
+
+      balanceEl.textContent = data.balance;
+      refLinkBoxEl.textContent = currentRefLink;
+
+      if (isVerified) {
+        verifyBadgeEl.textContent = "Статус: подтверждён";
+        verifyBadgeEl.style.color = "#22c55e";
+        profileSubStatusEl.textContent = "Подписка подтверждена";
+        profileSubStatusEl.style.color = "#22c55e";
+        lockedHintEl.style.display = "none";
+        statusBar.innerHTML = "Доступ ко всем вкладкам открыт. Ваш баланс: <span>" + data.balance + "</span> ⭐.";
+      } else {
+        verifyBadgeEl.textContent = "Статус: не подтвержден";
+        verifyBadgeEl.style.color = "#f97373";
+        profileSubStatusEl.textContent = "Не подтверждена";
+        profileSubStatusEl.style.color = "#f97373";
+        lockedHintEl.style.display = "block";
+        statusBar.textContent = "Подтвердите подписку на канал @photavel, чтобы открыть вкладки.";
+      }
+
+      updateFuel(data.can_play_today);
+      await loadCatalog();
+    } catch (e) {
+      console.error(e);
+      statusBar.textContent = "Ошибка загрузки профиля: " + e.message;
+    }
+  }
+
+  function updateFuel(canPlay) {
+    if (canPlay) {
+      fuelDot.style.background = "#22c55e";
+      fuelText.textContent = "Бак с топливом полон — можно играть";
+      btnStartGame.disabled = false;
+      btnStartGame.textContent = "Старт полёта";
+    } else {
+      fuelDot.style.background = "#f97373";
+      fuelText.textContent = "Бак пуст — следующая заправка завтра";
+      btnStartGame.disabled = true;
+      btnStartGame.textContent = "Сегодня уже играли";
+    }
+  }
+
+  async function doVerifySubscription() {
+    try {
+      statusBar.textContent = "Проверяем подписку на канал @photavel…";
+      const res = await api("/api/check-subscription", { method: "POST", body: "{}" });
+      if (!res.is_subscribed) {
+        showModal(
+          "Подписка не найдена",
+          "Подпишитесь на канал @photavel, затем вернитесь и нажмите «Подтвердить подписку».",
+        );
+        statusBar.textContent = "Подписка не найдена. Проверьте, что вы подписаны на @photavel.";
+        return;
+      }
+      isVerified = true;
+      balanceEl.textContent = res.new_balance;
+      verifyBadgeEl.textContent = "Статус: подтверждён";
+      verifyBadgeEl.style.color = "#22c55e";
+      profileSubStatusEl.textContent = "Подписка подтверждена";
+      profileSubStatusEl.style.color = "#22c55e";
+      lockedHintEl.style.display = "none";
+      statusBar.innerHTML = "Подписка подтверждена! Теперь доступны все вкладки. Баланс: <span>" + res.new_balance + "</span> ⭐.";
+      showModal("Готово!", "Подписка успешно подтверждена. Все вкладки разблокированы.");
+    } catch (e) {
+      console.error(e);
+      statusBar.textContent = "Ошибка проверки подписки: " + e.message;
+      showModal("Ошибка", "Не удалось проверить подписку. Попробуйте позже.");
+    }
+  }
+
+  btnVerify.addEventListener("click", doVerifySubscription);
+  btnVerify2.addEventListener("click", doVerifySubscription);
+
+  function switchTab(name) {
+    if (!isVerified && name !== "profile") {
+      showModal("Вкладка закрыта", "Сначала подтвердите подписку на канал @photavel.");
+      return;
+    }
+    Object.values(tabs).forEach(tab => tab.classList.remove("active"));
+    tabs[name].classList.add("active");
+    navButtons.forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.tab === name);
+    });
+  }
+
+  navButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+      switchTab(tab);
+    });
+  });
+
+  btnItem.addEventListener("click", () => switchTab("catalog"));
+  btnCatalog.addEventListener("click", () => switchTab("catalog"));
+  btnIphone.addEventListener("click", () => switchTab("roulette"));
+  btnFlight.addEventListener("click", () => switchTab("game"));
+
+  btnMoreStars.addEventListener("click", () => {
+    showModal(
+      "Реферальная ссылка",
+      "Приглашайте друзей по этой ссылке. Когда они подтвердят подписку — вы получите +30 звёздочек.",
+      currentRefLink ? currentRefLink : "Ссылка ещё загружается…"
+    );
+  });
+
+  btnCopyRef.addEventListener("click", async () => {
+    if (!currentRefLink) return;
+    try {
+      await navigator.clipboard.writeText(currentRefLink);
+      showModal("Скопировано", "Реферальная ссылка скопирована в буфер обмена.");
+    } catch (e) {
+      showModal("Ошибка", "Не удалось скопировать ссылку. Скопируйте вручную.", currentRefLink);
+    }
+  });
+
+  async function loadCatalog() {
+    try {
+      const items = await api("/api/catalog");
+      catalogGrid.innerHTML = "";
+      items.forEach(item => {
+        const el = document.createElement("div");
+        el.className = "catalog-item";
+        el.innerHTML = `
+          <div class="catalog-title">${item.title}</div>
+          <div class="catalog-desc">${item.description}</div>
+        `;
+        catalogGrid.appendChild(el);
+      });
+    } catch (e) {
+      console.error(e);
+      catalogGrid.innerHTML = "<div style='font-size:12px;color:var(--danger);'>Не удалось загрузить каталог.</div>";
+    }
+  }
+
+  btnSpin.addEventListener("click", async () => {
+    if (!isVerified) {
+      showModal("Вкладка закрыта", "Сначала подтвердите подписку на канал @photavel.");
+      return;
+    }
+    try {
+      statusBar.textContent = "Крутим рулетку…";
+      const res = await api("/api/roulette/spin", { method: "POST", body: "{}" });
+      balanceEl.textContent = res.new_balance;
+      let text;
+      if (res.prize_type === "iphone") {
+        text = "Поздравляем! Вам выпал условный iPhone (учтите приз в логике бота).";
+      } else {
+        text = `Вы выиграли ${res.prize_stars} звёздочек. Новый баланс: ${res.new_balance}.`;
+      }
+      showModal("Результат рулетки", text);
+      statusBar.textContent = "Рулетка завершена. Ваш новый баланс: " + res.new_balance + " ⭐.";
+    } catch (e) {
+      console.error(e);
+      showModal("Ошибка", "Не удалось прокрутить рулетку: " + e.message);
+      statusBar.textContent = "Ошибка рулетки: " + e.message;
+    }
+  });
+
+  let gameRunning = false;
+  let gameTimeLeft = 30;
+  let collectedStars = 0;
+  let lastFrameTime = 0;
+  let playerLane = 1;
+  let objects = [];
+
+  function resetGameState() {
+    gameRunning = false;
+    gameTimeLeft = 30;
+    collectedStars = 0;
+    objects = [];
+    playerLane = 1;
+    gameTimerEl.textContent = "30";
+    gameStarsEl.textContent = "0";
+    drawGameFrame(0);
+  }
+
+  function drawGameFrame(dt) {
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, "#020617");
+    grad.addColorStop(1, "#0b1120");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+
+    const lanes = [w * 0.2, w * 0.5, w * 0.8];
+
+    ctx.strokeStyle = "rgba(148,163,184,0.25)";
+    ctx.setLineDash([4, 6]);
+    lanes.forEach(x => {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+
+    objects.forEach(obj => {
+      const x = lanes[obj.lane];
+      const y = obj.y;
+      if (obj.type === "star") {
+        ctx.fillStyle = "#fbbf24";
+        ctx.beginPath();
+        ctx.arc(x, y, 7, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = "#ef4444";
+        ctx.fillRect(x - 10, y - 10, 20, 20);
+      }
+    });
+
+    const rocketX = lanes[playerLane];
+    const rocketY = h - 30;
+    ctx.fillStyle = "#38bdf8";
+    ctx.beginPath();
+    ctx.moveTo(rocketX, rocketY - 16);
+    ctx.lineTo(rocketX - 10, rocketY + 10);
+    ctx.lineTo(rocketX + 10, rocketY + 10);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "#f97316";
+    ctx.beginPath();
+    ctx.moveTo(rocketX, rocketY + 12);
+    ctx.lineTo(rocketX - 6, rocketY + 22);
+    ctx.lineTo(rocketX + 6, rocketY + 22);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function spawnObject() {
+    const type = Math.random() < 0.6 ? "star" : "obstacle";
+    const lane = Math.floor(Math.random() * 3);
+    objects.push({ type, lane, x: 0, y: -10 });
+  }
+
+  function gameLoop(timestamp) {
+    if (!gameRunning) {
+      drawGameFrame(0);
+      return;
+    }
+    if (!lastFrameTime) lastFrameTime = timestamp;
+    const dt = (timestamp - lastFrameTime) / 1000;
+    lastFrameTime = timestamp;
+
+    gameTimeLeft -= dt;
+    if (gameTimeLeft <= 0) {
+      gameTimeLeft = 0;
+      gameTimerEl.textContent = "0";
+      gameRunning = false;
+      finishGame();
+      drawGameFrame(dt);
+      return;
+    }
+    gameTimerEl.textContent = Math.ceil(gameTimeLeft);
+
+    if (Math.random() < dt * 2.2) spawnObject();
+
+    const speed = 80;
+    const w = canvas.width;
+    const h = canvas.height;
+    const lanes = [w * 0.2, w * 0.5, w * 0.8];
+
+    objects.forEach(obj => {
+      obj.y += speed * dt;
+    });
+
+    const rocketY = h - 30;
+    const collisionRadius = 20;
+    objects = objects.filter(obj => {
+      if (obj.y > h + 20) return false;
+
+      const objX = lanes[obj.lane];
+      const dx = objX - lanes[playerLane];
+      const dy = obj.y - rocketY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < collisionRadius) {
+        if (obj.type === "star") {
+          if (collectedStars < 20) {
+            collectedStars += 1;
+            gameStarsEl.textContent = collectedStars;
+          }
+        }
+        return false;
+      }
+      return true;
+    });
+
+    drawGameFrame(dt);
+    requestAnimationFrame(gameLoop);
+  }
+
+  canvas.addEventListener("click", (e) => {
+    if (!gameRunning) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x < rect.width / 2) {
+      playerLane = Math.max(0, playerLane - 1);
+    } else {
+      playerLane = Math.min(2, playerLane + 1);
+    }
+  });
+
+  async function startGame() {
+    if (!isVerified) {
+      showModal("Вкладка закрыта", "Сначала подтвердите подписку на канал @photavel.");
+      return;
+    }
+    try {
+      const status = await api("/api/game/status");
+      updateFuel(status.can_play_today);
+      if (!status.can_play_today) {
+        showModal("Сегодня уже играли", "Попробуйте снова завтра, когда бак с топливом снова заполнится.");
+        return;
+      }
+    } catch (e) {
+      console.error(e);
+      showModal("Ошибка", "Не удалось проверить статус игры: " + e.message);
+      return;
+    }
+
+    resetGameState();
+    gameRunning = true;
+    statusBar.textContent = "Полёт начался! Собирайте звёзды, игра длится 30 секунд.";
+    btnStartGame.disabled = true;
+    btnStartGame.textContent = "Игра идёт…";
+    lastFrameTime = 0;
+    requestAnimationFrame(gameLoop);
+  }
+
+  btnStartGame.addEventListener("click", startGame);
+
+  async function finishGame() {
+    try {
+      const res = await api("/api/game/finish", {
+        method: "POST",
+        body: JSON.stringify({ stars_collected: collectedStars }),
+      });
+      balanceEl.textContent = res.new_balance;
+      statusBar.textContent = `Игра завершена. Вы получили ${res.added} звёздочек. Следующая игра: ${res.next_available}.`;
+      showModal(
+        "Полёт завершён",
+        `Вы собрали ${collectedStars} звёздочек (зачтено ${res.added}). Новый баланс: ${res.new_balance}.`,
+      );
+      updateFuel(false);
+    } catch (e) {
+      console.error(e);
+      showModal("Ошибка", "Не удалось сохранить результат игры: " + e.message);
+      statusBar.textContent = "Ошибка сохранения результата игры: " + e.message;
+    } finally {
+      btnStartGame.disabled = true;
+      btnStartGame.textContent = "Сегодня уже играли";
+    }
+  }
+
+  resetGameState();
+  if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+    statusBar.textContent = "Telegram WebApp инициализирован. Загружаем данные…";
+  } else {
+    statusBar.textContent = "Не найден Telegram WebApp. Приложение должно запускаться внутри Telegram.";
+  }
+
+  window.addEventListener("load", () => {
+    loadProfile();
+  });
+</script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Telegram Web App</title>
