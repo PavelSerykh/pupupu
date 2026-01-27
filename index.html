@@ -657,6 +657,7 @@
   </div>
 </div>
 
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
   const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
   if (tg) {
@@ -664,9 +665,6 @@
     tg.ready();
   }
 
-  // Пытаемся получить user максимально надёжно:
-  // 1) tg.initDataUnsafe.user (обычно есть)
-  // 2) парсим user из tg.initData (если unsafe пустой)
   function getTgUser() {
     if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) return tg.initDataUnsafe.user;
     if (tg && typeof tg.initData === "string" && tg.initData.length > 0) {
@@ -684,7 +682,6 @@
   const profileUsernameEl = document.getElementById("profile-username");
   const avatarEl = document.getElementById("avatar");
   const balanceEl = document.getElementById("balance");
-  const verifyBadgeEl = document.getElementById("verify-badge");
   const profileBalanceEl = document.getElementById("profile-balance");
   const refLinkBoxEl = document.getElementById("ref-link-box");
   const btnItem = document.getElementById("btn-item");
@@ -702,7 +699,6 @@
     roulette: document.getElementById("tab-roulette"),
   };
   const topCard = document.getElementById("top-card");
-
   const catalogGrid = document.getElementById("catalog-grid");
 
   const canvas = document.getElementById("game-canvas");
@@ -732,240 +728,191 @@
     }
     modalBackdrop.classList.add("active");
   }
-
-  modalClose.addEventListener("click", () => {
-    modalBackdrop.classList.remove("active");
-  });
+  modalClose.addEventListener("click", () => modalBackdrop.classList.remove("active"));
   modalBackdrop.addEventListener("click", (e) => {
     if (e.target === modalBackdrop) modalBackdrop.classList.remove("active");
   });
 
-  const API_BASE = "";
-
-  async function api(path, options = {}) {
-    const url = API_BASE + path;
-    const headers = options.headers || {};
-    // Если запущено внутри Telegram WebApp — добавляем WebApp заголовки.
-    // Если открыто вне WebApp — не ходим в API (чтобы не спамить ошибками).
-    const user = getTgUser();
-    if (!(tg && tg.initData && tg.initData.length > 0 && user && user.id)) {
-      throw new Error("OPEN_IN_TELEGRAM");
-    }
-    headers["X-Telegram-InitData"] = tg.initData;
-    headers["X-Telegram-User-Id"] = user.id;
-    if (user.username) headers["X-Telegram-Username"] = user.username;
-    const res = await fetch(url, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...headers,
-      },
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Ошибка ${res.status}: ${text}`);
-    }
-    return await res.json();
-  }
-
-  // Проверку подписки временно убрали — вкладки всегда доступны.
-  let isVerified = true;
+  // Бесконечный баланс (только визуально)
+  let currentBalance = Infinity;
   let currentRefLink = "";
+  function formatBalance() { return currentBalance === Infinity ? "∞" : String(currentBalance); }
+  function updateBalanceUI() {
+    const v = formatBalance();
+    balanceEl.textContent = v;
+    profileBalanceEl.textContent = v;
+  }
 
-  async function loadProfile() {
-    try {
-      statusBar.textContent = "Загружаем профиль…";
-      // Если НЕ Telegram — просто показываем красивый демо-экран без запросов.
-      const tgUser = getTgUser();
-      if (!(tg && tg.initData && tg.initData.length > 0 && tgUser && tgUser.id)) {
-        const uname = "Гость";
-        usernameEl.textContent = uname;
-        profileUsernameEl.textContent = uname;
-        avatarEl.textContent = "G";
-        balanceEl.textContent = "0";
-        profileBalanceEl.textContent = "0";
-        currentRefLink = "Откройте внутри Telegram, чтобы получить реферальную ссылку";
-        refLinkBoxEl.textContent = currentRefLink;
-        updateFuel(true);
-        statusBar.innerHTML = "Откройте мини‑приложение через кнопку <span>WebApp</span> в боте (не через браузер/ссылку), чтобы работал профиль/баланс/рефералка.";
-        await loadCatalog(true);
-        return;
-      }
-
-      const data = await api("/api/me");
-      currentRefLink = data.ref_link || "";
-
-      const uname = (tgUser.username || tgUser.first_name || "Пользователь");
-      usernameEl.textContent = tgUser.username ? "@" + tgUser.username : uname;
+  function initProfile() {
+    const user = getTgUser();
+    if (user) {
+      const uname = user.username || user.first_name || "Пользователь";
+      usernameEl.textContent = user.username ? "@" + user.username : uname;
       profileUsernameEl.textContent = usernameEl.textContent;
-      avatarEl.textContent = (uname[0] ? uname[0].toUpperCase() : "U");
-
-      balanceEl.textContent = data.balance;
-      profileBalanceEl.textContent = data.balance;
-      refLinkBoxEl.textContent = currentRefLink || "Ссылка появится после открытия в Telegram";
-
-      updateFuel(data.can_play_today);
-      statusBar.innerHTML = "Добро пожаловать. Баланс: <span>" + data.balance + "</span> ⭐. Игра — бесплатно.";
-      await loadCatalog(false);
-    } catch (e) {
-      if (e && e.message === "OPEN_IN_TELEGRAM") {
-        statusBar.innerHTML = "Откройте это мини‑приложение <span>внутри Telegram</span>, чтобы работал профиль/баланс/рефералка.";
-        return;
-      }
-      statusBar.textContent = "Не удалось загрузить данные. Попробуйте позже.";
-    }
-  }
-
-  function updateFuel(canPlay) {
-    if (canPlay) {
-      fuelDot.style.background = "#22c55e";
-      fuelText.textContent = "Бак с топливом полон — можно играть";
-      btnStartGame.disabled = false;
-      btnStartGame.textContent = "Старт полёта";
+      avatarEl.textContent = (uname[0] || "U").toUpperCase();
+      currentRefLink = "https://t.me/" + (user.username || "your_bot") + "?start=ref_demo";
+      refLinkBoxEl.textContent = currentRefLink;
     } else {
-      fuelDot.style.background = "#f97373";
-      fuelText.textContent = "Бак пуст — следующая заправка завтра";
-      btnStartGame.disabled = true;
-      btnStartGame.textContent = "Сегодня уже играли";
+      const uname = "Гость";
+      usernameEl.textContent = uname;
+      profileUsernameEl.textContent = uname;
+      avatarEl.textContent = "G";
+      currentRefLink = "Откройте мини‑приложение из Telegram, чтобы получить реферальную ссылку.";
+      refLinkBoxEl.textContent = currentRefLink;
     }
+    currentBalance = Infinity;
+    updateBalanceUI();
+    updateFuel(true);
+    loadCatalog();
+    statusBar.innerHTML = "Демо‑режим. Баланс: <span>∞</span> ⭐. Всё работает без ограничений.";
   }
-
-  function switchTab(name) {
-    // Переключение вкладок всегда доступно.
-    Object.values(tabs).forEach(tab => tab.classList.remove("active"));
-    if (tabs[name]) tabs[name].classList.add("active");
-    navButtons.forEach(btn => {
-      btn.classList.toggle("active", btn.dataset.tab === name);
-    });
-    // Шапка профиля показывается только на вкладке "Профиль"
-    if (topCard) {
-      topCard.style.display = name === "profile" ? "block" : "none";
-    }
-  }
-
-  navButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      const tab = btn.dataset.tab;
-      switchTab(tab);
-    });
-  });
-
-  btnItem.addEventListener("click", () => switchTab("catalog"));
-  btnCatalog.addEventListener("click", () => switchTab("catalog"));
-  btnIphone.addEventListener("click", () => switchTab("roulette"));
-  btnFlight.addEventListener("click", () => switchTab("game"));
 
   btnMoreStars.addEventListener("click", () => {
     showModal(
       "Реферальная ссылка",
-      "Приглашайте друзей по этой ссылке. Когда они подтвердят подписку — вы получите +30 звёздочек.",
-      currentRefLink ? currentRefLink : "Ссылка ещё загружается…"
+      "Приглашайте друзей по этой ссылке. В демо‑версии баланс бесконечный, но механику наград можно добавить на сервере.",
+      currentRefLink
     );
   });
-
   btnCopyRef.addEventListener("click", async () => {
     if (!currentRefLink) return;
     try {
       await navigator.clipboard.writeText(currentRefLink);
       showModal("Скопировано", "Реферальная ссылка скопирована в буфер обмена.");
-    } catch (e) {
+    } catch {
       showModal("Ошибка", "Не удалось скопировать ссылку. Скопируйте вручную.", currentRefLink);
     }
   });
 
-  async function loadCatalog(isDemoMode) {
-    if (isDemoMode) {
-      const items = Array.from({ length: 9 }).map((_, i) => ({
-        title: `Товар ${i + 1}`,
-        description: "Описание товара-заглушки",
-      }));
-      catalogGrid.innerHTML = "";
-      items.forEach(item => {
-        const el = document.createElement("div");
-        el.className = "catalog-item";
-        el.innerHTML = `
-          <div class="catalog-title">${item.title}</div>
-          <div class="catalog-desc">${item.description}</div>
-        `;
-        catalogGrid.appendChild(el);
-      });
-      return;
-    }
-    try {
-      const items = await api("/api/catalog");
-      catalogGrid.innerHTML = "";
-      items.forEach(item => {
-        const el = document.createElement("div");
-        el.className = "catalog-item";
-        el.innerHTML = `
-          <div class="catalog-title">${item.title}</div>
-          <div class="catalog-desc">${item.description}</div>
-        `;
-        catalogGrid.appendChild(el);
-      });
-    } catch (e) {
-      catalogGrid.innerHTML = "<div style='font-size:12px;color:rgba(236,72,153,0.9);'>Не удалось загрузить каталог.</div>";
-    }
+  function switchTab(name) {
+    Object.values(tabs).forEach(tab => tab.classList.remove("active"));
+    if (tabs[name]) tabs[name].classList.add("active");
+    navButtons.forEach(btn => btn.classList.toggle("active", btn.dataset.tab === name));
+    if (topCard) topCard.style.display = name === "profile" ? "block" : "none";
+  }
+  navButtons.forEach(btn => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
+  btnItem.addEventListener("click", () => switchTab("catalog"));
+  btnCatalog.addEventListener("click", () => switchTab("catalog"));
+  btnIphone.addEventListener("click", () => switchTab("roulette"));
+  btnFlight.addEventListener("click", () => switchTab("game"));
+
+  function loadCatalog() {
+    const items = Array.from({ length: 9 }).map((_, i) => ({
+      title: `Товар ${i + 1}`,
+      description: "Описание товара-заглушки",
+    }));
+    catalogGrid.innerHTML = "";
+    items.forEach(item => {
+      const el = document.createElement("div");
+      el.className = "catalog-item";
+      el.innerHTML = `
+        <div class="catalog-title">${item.title}</div>
+        <div class="catalog-desc">${item.description}</div>
+      `;
+      catalogGrid.appendChild(el);
+    });
   }
 
-  btnSpin.addEventListener("click", async () => {
-    try {
-      statusBar.textContent = "Крутим рулетку…";
-      const res = await api("/api/roulette/spin", { method: "POST", body: "{}" });
-      balanceEl.textContent = res.new_balance;
-      profileBalanceEl.textContent = res.new_balance;
-      let text;
-      if (res.prize_type === "iphone") {
-        text = "Поздравляем! Вам выпал условный iPhone (учтите приз в логике бота).";
-      } else {
-        text = `Вы выиграли ${res.prize_stars} звёздочек. Новый баланс: ${res.new_balance}.`;
-      }
-      showModal("Результат рулетки", text);
-      statusBar.textContent = "Рулетка завершена. Ваш новый баланс: " + res.new_balance + " ⭐.";
-    } catch (e) {
-      if (e && e.message === "OPEN_IN_TELEGRAM") {
-        showModal("Откройте в Telegram", "Рулетка работает только внутри Telegram WebApp.");
-        return;
-      }
-      showModal("Ошибка", "Не удалось прокрутить рулетку. Попробуйте позже.");
-      statusBar.textContent = "Рулетка временно недоступна.";
+  btnSpin.addEventListener("click", () => {
+    statusBar.textContent = "Крутим рулетку…";
+    const prizes = [
+      { type: "stars", stars: 5, weight: 40 },
+      { type: "stars", stars: 10, weight: 30 },
+      { type: "stars", stars: 20, weight: 15 },
+      { type: "stars", stars: 30, weight: 8 },
+      { type: "stars", stars: 40, weight: 5 },
+      { type: "stars", stars: 50, weight: 1 },
+      { type: "iphone", stars: 0, weight: 1 },
+    ];
+    const weights = prizes.map(p => p.weight);
+    const total = weights.reduce((a, b) => a + b, 0);
+    let r = Math.random() * total;
+    let prize = prizes[0];
+    for (let i = 0; i < prizes.length; i++) {
+      if (r < weights[i]) { prize = prizes[i]; break; }
+      r -= weights[i];
     }
+    let text;
+    if (prize.type === "iphone") {
+      text = "Поздравляем! Вам выпал условный iPhone. В боевой версии это можно зафиксировать на сервере.";
+    } else {
+      text = `Вы выиграли ${prize.stars} звёздочек. Баланс остаётся бесконечным.`;
+    }
+    showModal("Результат рулетки", text);
+    statusBar.textContent = "Рулетка завершена. Баланс: ∞ ⭐.";
   });
 
   let gameRunning = false;
   let gameTimeLeft = 30;
   let collectedStars = 0;
   let lastFrameTime = 0;
-  let playerLane = 1;
+  let targetLane = 1;
+  let rocketX = 0;
+  let lanesX = [];
   let objects = [];
+
+  function resizeGameCanvas() {
+    const cardWidth = canvas.parentElement.clientWidth || 360;
+    const height = Math.min(420, Math.max(260, window.innerHeight * 0.55));
+    canvas.width = cardWidth * 2;
+    canvas.height = height * 2;
+    canvas.style.width = cardWidth + "px";
+    canvas.style.height = height + "px";
+    const w = canvas.width;
+    lanesX = [w * 0.2, w * 0.5, w * 0.8];
+    rocketX = lanesX[targetLane];
+  }
+
+  function updateFuel(canPlay) {
+    if (canPlay) {
+      fuelDot.style.background = "#22c55e";
+      fuelText.textContent = "Бак с топливом полон — можно играть сколько угодно";
+      btnStartGame.disabled = false;
+      btnStartGame.textContent = "Старт полёта";
+    } else {
+      fuelDot.style.background = "#f97373";
+      fuelText.textContent = "Временно недоступно";
+      btnStartGame.disabled = true;
+      btnStartGame.textContent = "Недоступно";
+    }
+  }
 
   function resetGameState() {
     gameRunning = false;
     gameTimeLeft = 30;
     collectedStars = 0;
     objects = [];
-    playerLane = 1;
+    targetLane = 1;
+    rocketX = lanesX[1] || 0;
     gameTimerEl.textContent = "30";
     gameStarsEl.textContent = "0";
-    drawGameFrame(0);
+    drawGameFrame();
   }
 
-  function drawGameFrame(dt) {
+  function drawGameFrame() {
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
 
     const grad = ctx.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, "#020617");
-    grad.addColorStop(1, "#0b1120");
+    grad.addColorStop(1, "#020617");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
-    const lanes = [w * 0.2, w * 0.5, w * 0.8];
+    ctx.save();
+    ctx.globalAlpha = 0.15;
+    for (let i = 0; i < 70; i++) {
+      const sx = (Math.random() * w) | 0;
+      const sy = (Math.random() * h) | 0;
+      ctx.fillStyle = i % 5 === 0 ? "#facc15" : "#e5e7eb";
+      ctx.fillRect(sx, sy, 2, 2);
+    }
+    ctx.restore();
 
     ctx.strokeStyle = "rgba(148,163,184,0.25)";
-    ctx.setLineDash([4, 6]);
-    lanes.forEach(x => {
+    ctx.setLineDash([10, 10]);
+    lanesX.forEach(x => {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, h);
@@ -974,47 +921,58 @@
     ctx.setLineDash([]);
 
     objects.forEach(obj => {
-      const x = lanes[obj.lane];
+      const x = lanesX[obj.lane];
       const y = obj.y;
       if (obj.type === "star") {
         ctx.fillStyle = "#fbbf24";
         ctx.beginPath();
-        ctx.arc(x, y, 7, 0, Math.PI * 2);
+        ctx.arc(x, y, 12, 0, Math.PI * 2);
         ctx.fill();
       } else {
         ctx.fillStyle = "#ef4444";
-        ctx.fillRect(x - 10, y - 10, 20, 20);
+        ctx.beginPath();
+        ctx.roundRect(x - 18, y - 18, 36, 36, 8);
+        ctx.fill();
       }
     });
 
-    const rocketX = lanes[playerLane];
-    const rocketY = h - 30;
+    const rocketY = h - 80;
+    const noseY = rocketY - 40;
     ctx.fillStyle = "#38bdf8";
     ctx.beginPath();
-    ctx.moveTo(rocketX, rocketY - 16);
-    ctx.lineTo(rocketX - 10, rocketY + 10);
-    ctx.lineTo(rocketX + 10, rocketY + 10);
+    ctx.moveTo(rocketX, noseY);
+    ctx.lineTo(rocketX - 26, rocketY + 18);
+    ctx.lineTo(rocketX + 26, rocketY + 18);
     ctx.closePath();
     ctx.fill();
 
-    ctx.fillStyle = "#f97316";
+    ctx.fillStyle = "#0ea5e9";
     ctx.beginPath();
-    ctx.moveTo(rocketX, rocketY + 12);
-    ctx.lineTo(rocketX - 6, rocketY + 22);
-    ctx.lineTo(rocketX + 6, rocketY + 22);
+    ctx.ellipse(rocketX, rocketY - 4, 14, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const flameHeight = gameRunning ? 40 + Math.sin(performance.now() / 60) * 8 : 20;
+    const gradFlame = ctx.createLinearGradient(rocketX, rocketY + 18, rocketX, rocketY + 18 + flameHeight);
+    gradFlame.addColorStop(0, "#f97316");
+    gradFlame.addColorStop(1, "rgba(248,113,113,0)");
+    ctx.fillStyle = gradFlame;
+    ctx.beginPath();
+    ctx.moveTo(rocketX, rocketY + 18);
+    ctx.lineTo(rocketX - 16, rocketY + 18 + flameHeight);
+    ctx.lineTo(rocketX + 16, rocketY + 18 + flameHeight);
     ctx.closePath();
     ctx.fill();
   }
 
   function spawnObject() {
-    const type = Math.random() < 0.6 ? "star" : "obstacle";
+    const type = Math.random() < 0.65 ? "star" : "obstacle";
     const lane = Math.floor(Math.random() * 3);
-    objects.push({ type, lane, x: 0, y: -10 });
+    objects.push({ type, lane, y: -40 });
   }
 
   function gameLoop(timestamp) {
     if (!gameRunning) {
-      drawGameFrame(0);
+      drawGameFrame();
       return;
     }
     if (!lastFrameTime) lastFrameTime = timestamp;
@@ -1027,32 +985,30 @@
       gameTimerEl.textContent = "0";
       gameRunning = false;
       finishGame();
-      drawGameFrame(dt);
+      drawGameFrame();
       return;
     }
     gameTimerEl.textContent = Math.ceil(gameTimeLeft);
 
-    if (Math.random() < dt * 2.2) spawnObject();
+    if (Math.random() < dt * 3) spawnObject();
 
-    const speed = 80;
-    const w = canvas.width;
+    const speed = 220;
     const h = canvas.height;
-    const lanes = [w * 0.2, w * 0.5, w * 0.8];
 
-    objects.forEach(obj => {
-      obj.y += speed * dt;
-    });
+    const desiredX = lanesX[targetLane];
+    const lerpFactor = Math.min(10 * dt, 1);
+    rocketX += (desiredX - rocketX) * lerpFactor;
 
-    const rocketY = h - 30;
-    const collisionRadius = 20;
+    objects.forEach(obj => { obj.y += speed * dt; });
+
+    const rocketY = h - 80;
+    const collisionRadius = 42;
     objects = objects.filter(obj => {
-      if (obj.y > h + 20) return false;
-
-      const objX = lanes[obj.lane];
-      const dx = objX - lanes[playerLane];
+      if (obj.y > h + 60) return false;
+      const objX = lanesX[obj.lane];
+      const dx = objX - rocketX;
       const dy = obj.y - rocketY;
       const dist = Math.sqrt(dx * dx + dy * dy);
-
       if (dist < collisionRadius) {
         if (obj.type === "star") {
           if (collectedStars < 20) {
@@ -1065,7 +1021,7 @@
       return true;
     });
 
-    drawGameFrame(dt);
+    drawGameFrame();
     requestAnimationFrame(gameLoop);
   }
 
@@ -1073,89 +1029,43 @@
     if (!gameRunning) return;
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    if (x < rect.width / 2) {
-      playerLane = Math.max(0, playerLane - 1);
-    } else {
-      playerLane = Math.min(2, playerLane + 1);
-    }
+    if (x < rect.width / 3) targetLane = 0;
+    else if (x < (rect.width * 2) / 3) targetLane = 1;
+    else targetLane = 2;
   });
 
-  async function startGame() {
-    // Игра бесплатная (звёздочки не тратятся при запуске).
-    try {
-      if (!(tg && tg.initDataUnsafe && tg.initDataUnsafe.user)) {
-        showModal("Откройте в Telegram", "Игра сохраняет прогресс только внутри Telegram WebApp.");
-        // Демо режим: просто стартуем без запросов
-        resetGameState();
-        gameRunning = true;
-        statusBar.textContent = "Демо‑полёт начался! В Telegram результат будет сохраняться в профиль.";
-        btnStartGame.disabled = true;
-        btnStartGame.textContent = "Игра идёт…";
-        lastFrameTime = 0;
-        requestAnimationFrame(gameLoop);
-        return;
-      }
-      const status = await api("/api/game/status");
-      updateFuel(status.can_play_today);
-      if (!status.can_play_today) {
-        showModal("Сегодня уже играли", "Попробуйте снова завтра, когда бак с топливом снова заполнится.");
-        return;
-      }
-    } catch (e) {
-      if (e && e.message === "OPEN_IN_TELEGRAM") {
-        showModal("Откройте в Telegram", "Игра сохраняет прогресс только внутри Telegram WebApp.");
-        return;
-      }
-      showModal("Ошибка", "Не удалось запустить игру. Попробуйте позже.");
-      return;
-    }
-
+  btnStartGame.addEventListener("click", () => {
+    resizeGameCanvas();
     resetGameState();
     gameRunning = true;
-    statusBar.textContent = "Полёт начался! Собирайте звёзды, игра длится 30 секунд.";
+    statusBar.textContent = "Полёт начался! Собирайте звёзды. Игра длится 30 секунд.";
     btnStartGame.disabled = true;
     btnStartGame.textContent = "Игра идёт…";
     lastFrameTime = 0;
     requestAnimationFrame(gameLoop);
+  });
+
+  function finishGame() {
+    showModal(
+      "Полёт завершён",
+      `Вы собрали ${collectedStars} звёздочек. Баланс остаётся бесконечным.`
+    );
+    statusBar.textContent = "Игра завершена. Баланс: ∞ ⭐.";
+    btnStartGame.disabled = false;
+    btnStartGame.textContent = "Старт полёта";
   }
 
-  btnStartGame.addEventListener("click", startGame);
+  window.addEventListener("resize", () => {
+    resizeGameCanvas();
+    drawGameFrame();
+  });
 
-  async function finishGame() {
-    try {
-      const res = await api("/api/game/finish", {
-        method: "POST",
-        body: JSON.stringify({ stars_collected: collectedStars }),
-      });
-      balanceEl.textContent = res.new_balance;
-      profileBalanceEl.textContent = res.new_balance;
-      statusBar.textContent = `Игра завершена. Вы получили ${res.added} звёздочек. Следующая игра: ${res.next_available}.`;
-      showModal(
-        "Полёт завершён",
-        `Вы собрали ${collectedStars} звёздочек (зачтено ${res.added}). Новый баланс: ${res.new_balance}.`,
-      );
-      updateFuel(false);
-    } catch (e) {
-      if (e && e.message === "OPEN_IN_TELEGRAM") {
-        showModal("Демо‑режим", `Вы собрали ${collectedStars} звёздочек. Откройте игру в Telegram, чтобы сохранять результат.`);
-        statusBar.textContent = "Демо‑режим: результат не сохранён (откройте в Telegram).";
-        btnStartGame.disabled = false;
-        btnStartGame.textContent = "Старт полёта";
-        return;
-      }
-      showModal("Ошибка", "Не удалось сохранить результат игры. Попробуйте позже.");
-      statusBar.textContent = "Ошибка сохранения результата игры.";
-    } finally {
-      btnStartGame.disabled = true;
-      btnStartGame.textContent = "Сегодня уже играли";
-    }
-  }
-
-  resetGameState();
-  // Fade-in при загрузке
   window.addEventListener("load", () => {
     document.body.classList.add("loaded");
-    loadProfile();
+    resizeGameCanvas();
+    resetGameState();
+    initProfile();
+    switchTab("profile");
   });
 </script>
 </body>
