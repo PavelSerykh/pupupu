@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <title>Telegram Mini App — Полёт к звёздам</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Важно: официальный скрипт Telegram Web Apps -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {
       /* Telegram-ish neon space theme */
@@ -652,6 +654,21 @@
     tg.ready();
   }
 
+  // Пытаемся получить user максимально надёжно:
+  // 1) tg.initDataUnsafe.user (обычно есть)
+  // 2) парсим user из tg.initData (если unsafe пустой)
+  function getTgUser() {
+    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) return tg.initDataUnsafe.user;
+    if (tg && typeof tg.initData === "string" && tg.initData.length > 0) {
+      try {
+        const params = new URLSearchParams(tg.initData);
+        const userStr = params.get("user");
+        if (userStr) return JSON.parse(userStr);
+      } catch (_) {}
+    }
+    return null;
+  }
+
   const statusBar = document.getElementById("status-bar");
   const usernameEl = document.getElementById("username");
   const profileUsernameEl = document.getElementById("profile-username");
@@ -717,12 +734,12 @@
   async function api(path, options = {}) {
     const url = API_BASE + path;
     const headers = options.headers || {};
-    // Если запущено внутри Telegram — добавляем WebApp заголовки.
-    // Если открыто просто в браузере — НЕ ходим в API (чтобы не спамить ошибками).
-    if (!(tg && tg.initDataUnsafe && tg.initData && tg.initDataUnsafe.user)) {
+    // Если запущено внутри Telegram WebApp — добавляем WebApp заголовки.
+    // Если открыто вне WebApp — не ходим в API (чтобы не спамить ошибками).
+    const user = getTgUser();
+    if (!(tg && tg.initData && tg.initData.length > 0 && user && user.id)) {
       throw new Error("OPEN_IN_TELEGRAM");
     }
-    const user = tg.initDataUnsafe.user;
     headers["X-Telegram-InitData"] = tg.initData;
     headers["X-Telegram-User-Id"] = user.id;
     if (user.username) headers["X-Telegram-Username"] = user.username;
@@ -748,7 +765,8 @@
     try {
       statusBar.textContent = "Загружаем профиль…";
       // Если НЕ Telegram — просто показываем красивый демо-экран без запросов.
-      if (!(tg && tg.initDataUnsafe && tg.initDataUnsafe.user)) {
+      const tgUser = getTgUser();
+      if (!(tg && tg.initData && tg.initData.length > 0 && tgUser && tgUser.id)) {
         const uname = "Гость";
         usernameEl.textContent = uname;
         profileUsernameEl.textContent = uname;
@@ -758,7 +776,7 @@
         currentRefLink = "Откройте внутри Telegram, чтобы получить реферальную ссылку";
         refLinkBoxEl.textContent = currentRefLink;
         updateFuel(true);
-        statusBar.innerHTML = "Откройте это мини‑приложение <span>внутри Telegram</span>, чтобы работал профиль/баланс/рефералка.";
+        statusBar.innerHTML = "Откройте мини‑приложение через кнопку <span>WebApp</span> в боте (не через браузер/ссылку), чтобы работал профиль/баланс/рефералка.";
         await loadCatalog(true);
         return;
       }
@@ -766,9 +784,8 @@
       const data = await api("/api/me");
       currentRefLink = data.ref_link || "";
 
-      const user = tg.initDataUnsafe.user;
-      const uname = (user.username || user.first_name || "Пользователь");
-      usernameEl.textContent = user.username ? "@" + user.username : uname;
+      const uname = (tgUser.username || tgUser.first_name || "Пользователь");
+      usernameEl.textContent = tgUser.username ? "@" + tgUser.username : uname;
       profileUsernameEl.textContent = usernameEl.textContent;
       avatarEl.textContent = (uname[0] ? uname[0].toUpperCase() : "U");
 
