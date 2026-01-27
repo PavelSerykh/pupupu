@@ -44,8 +44,10 @@
       color: var(--text);
       display: flex;
       justify-content: center;
+      align-items: flex-start;
       min-height: 100vh;
       overflow-x: hidden;
+      overflow-y: auto;
     }
     .app {
       width: 100%;
@@ -275,6 +277,7 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
+      padding-bottom: 96px; /* чтобы контент не уезжал под нижнее меню */
     }
     .tab {
       display: none;
@@ -698,6 +701,7 @@
     catalog: document.getElementById("tab-catalog"),
     roulette: document.getElementById("tab-roulette"),
   };
+  const topCard = document.getElementById("top-card");
 
   const catalogGrid = document.getElementById("catalog-grid");
 
@@ -827,12 +831,16 @@
   }
 
   function switchTab(name) {
-    // Проверку подписки убрали — переключение всегда доступно.
+    // Переключение вкладок всегда доступно.
     Object.values(tabs).forEach(tab => tab.classList.remove("active"));
-    tabs[name].classList.add("active");
+    if (tabs[name]) tabs[name].classList.add("active");
     navButtons.forEach(btn => {
       btn.classList.toggle("active", btn.dataset.tab === name);
     });
+    // Шапка профиля показывается только на вкладке "Профиль"
+    if (topCard) {
+      topCard.style.display = name === "profile" ? "block" : "none";
+    }
   }
 
   navButtons.forEach(btn => {
